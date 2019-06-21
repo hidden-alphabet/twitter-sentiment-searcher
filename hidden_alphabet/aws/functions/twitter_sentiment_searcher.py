@@ -18,6 +18,10 @@ def handler(event, context):
         password=os.environ['PG_PASSWORD']
     )
 
+    data = json.loads(event['body'])
+    start = data['start']
+    end = data['end']
+
     with db.cursor() as cursor:
         date_query = """
             SELECT * FROM twitter
@@ -34,4 +38,7 @@ def handler(event, context):
 
         timeseries = [dict(zip(names, row)) for row in rows]
 
-    return json.dumps(timeseries, cls=DatetimeEncoder)
+    return {
+        'statusCode': 200,
+        'body': json.dumps(timeseries, cls=DatetimeEncoder)
+    }
