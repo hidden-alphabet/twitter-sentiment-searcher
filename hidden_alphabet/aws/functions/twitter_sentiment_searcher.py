@@ -1,16 +1,15 @@
 import datetime
-from dotenv import load_dotenv
 import psycopg2
 import json
 import os
 
-load_dotenv()
+class DatetimeEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, datetime.date):
+            return str(obj)
+        return json.JSONEncoder.default(self, obj)
 
-def search(start, end):
-    """
-      :start: Start Time String
-      :end: End Time String
-    """
+def handler(event, context):
     db = psycopg2.connect(
         host=os.environ['PG_HOST'],
         port=os.environ['PG_PORT'],
@@ -18,39 +17,21 @@ def search(start, end):
         user=os.environ['PG_USERNAME'],
         password=os.environ['PG_PASSWORD']
     )
-    cursor = db.cursor()
-    date_query = """
-        SELECT * FROM twitter
-        WHERE tweet_time
-        BETWEEN date '{}'
-        AND date '{}';
-    """.format(start,end)
-    cursor.execute(date_query)
-    # Creates list of tuples
-    rows = cursor.fetchall()
-    col_names_query = """
-        SELECT * FROM twitter
-        LIMIT 0
-    """
-    cursor.execute(col_names_query)
-    # Get column names in twitter table
-    names = [desc[0] for desc in cursor.description]
 
-    def make_dictionary(rows, columns):
-        """
-          :rows: list of tuples
-          :columns: list of strings
-        """
-        p = []
-        for row in rows:
-            for column in columns:
-            # dictionary.setdefault(column, row).append(dic)
-            p.append(dictionary)
+    with db.cursor() as cursor:
+        date_query = """
+            SELECT * FROM twitter
+            WHERE tweet_time
+            BETWEEN date '{}'
+            AND date '{}';
+        """.format(start, end)
 
-    print(names)
+        cursor.execute(date_query)
+        rows = cursor.fetchall()
 
-    cursor.close()
+        cursor.execute(""" SELECT * FROM twitter LIMIT 0 """)
+        names = [desc[0] for desc in cursor.description]
 
-    # return json.dumps()
+        timeseries = [dict(zip(names, row)) for row in rows]
 
-search("2019-06-15","2019-06-16")
+    return json.dumps(timeseries, cls=DatetimeEncoder)
